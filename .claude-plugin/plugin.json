@@ -1,6 +1,6 @@
 {
   "name": "strayfiles-ping",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Get notified on your phone when AI tasks complete. Say 'ping me when done' and Claude will actually ping you.",
   "author": "strayfiles",
   "homepage": "https://strayfiles.com/docs/pro/ping",
