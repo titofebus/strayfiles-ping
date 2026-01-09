@@ -18,7 +18,7 @@ Get notified on your phone when AI tasks complete. Say "ping me when done" and C
 
 ```bash
 # Install the plugin
-claude plugin install https://github.com/strayfiles/strayfiles-ping.git
+claude plugin install https://github.com/titofebus/strayfiles-ping.git
 
 # Authenticate with your Strayfiles account
 strayfiles-ping auth

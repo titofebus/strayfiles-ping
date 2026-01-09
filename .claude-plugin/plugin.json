@@ -4,7 +4,7 @@
   "description": "Get notified on your phone when AI tasks complete. Say 'ping me when done' and Claude will actually ping you.",
   "author": "strayfiles",
   "homepage": "https://strayfiles.com/docs/pro/ping",
-  "repository": "https://github.com/strayfiles/strayfiles-ping",
+  "repository": "https://github.com/titofebus/strayfiles-ping",
   "skills": "../skills",
   "mcpServers": "../.mcp.json"
 }

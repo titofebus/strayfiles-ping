@@ -4,7 +4,7 @@
 
 set -e
 
-REPO="strayfiles/strayfiles-ping"
+REPO="titofebus/strayfiles-ping"
 INSTALL_DIR="${HOME}/.local/bin"
 
 # Detect platform
