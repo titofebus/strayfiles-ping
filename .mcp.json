@@ -1,0 +1,7 @@
+{
+  "strayfiles-ping": {
+    "command": "strayfiles-ping",
+    "args": ["serve"],
+    "env": {}
+  }
+}
