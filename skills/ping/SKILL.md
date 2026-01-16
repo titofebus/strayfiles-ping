@@ -6,7 +6,17 @@ allowed-tools: mcp__strayfiles-ping__ping, mcp__strayfiles-ping__wait_for_respon
 
 # Strayfiles Ping
 
-Send notifications to the user's iOS/macOS devices and optionally wait for their response. Notifications appear on all connected devices; the first response from any device wins.
+Send notifications to the user's iOS/macOS devices and wait for their response.
+
+## CRITICAL: Always Wait for Responses
+
+**By default, `ping()` waits for the user to respond.** This is intentional and correct:
+- Just call `ping("your message")` — it will automatically wait up to 5 minutes
+- Do NOT set `wait=false` unless you explicitly don't need a response
+- The user may be away from their computer — ping is likely your only way to reach them
+
+**Wrong:** `ping("Deploy?", wait=false)` then forgetting to wait → user never gets to respond
+**Right:** `ping("Deploy?")` → waits for response → you get "Deploy" or "Cancel"
 
 ## When to Use
 
@@ -31,7 +41,7 @@ Send notifications to the user's iOS/macOS devices and optionally wait for their
 
 ### ping
 
-Send a notification to all user's connected devices.
+Send a notification and wait for the user's response.
 
 **Parameters:**
 - `message` (string, required): What to tell the user
@@ -41,66 +51,97 @@ Send a notification to all user's connected devices.
   - Maximum 4 options
   - Keep labels short (1-3 words)
   - Example: `["Approve", "Reject", "Skip"]`
+- `wait` (boolean, optional): Whether to wait for response
+  - Default: `true` (blocks until response or timeout)
+  - Set to `false` for fire-and-forget notifications
+- `timeout_seconds` (number, optional): How long to wait
+  - Default: 300 (5 minutes)
+  - Maximum: 3600 (1 hour)
 
-**Returns:** Notification ID (use for tracking)
+**Returns:**
+- If user responds: `"User responded: \"Deploy\""`
+- If timeout: Message explaining user is unavailable with suggestions
+- If queue has pre-set response: Returns immediately with the queued response
 
-### wait_for_response
+### wait_for_response (Advanced)
 
-Block execution until user responds or timeout expires.
+Block execution until user responds to a previous ping.
+
+**Use this only if** you need to do work between sending a ping (with `wait=false`) and waiting for the response. In most cases, just use `ping()` with the default `wait=true`.
 
 **Parameters:**
 - `timeout_seconds` (number, optional): How long to wait
   - Default: 300 (5 minutes)
-  - Maximum: 600 (10 minutes)
-  - Notifications expire after timeout
-
-**Returns:** User's response text or selected option
+  - Maximum: 3600 (1 hour)
 
 ## Usage Patterns
+
+### Get approval before continuing (most common)
+```
+response = ping("Ready to deploy to production. 23 files changed. Proceed?",
+                options=["Deploy", "Cancel", "Show diff"])
+
+if response contains "Deploy":
+    // proceed with deployment
+elif response contains "Show diff":
+    // show the diff, then ask again
+else:
+    // user cancelled or timed out
+```
 
 ### Simple notification (fire and forget)
 Use when you just need to inform, no response needed:
 ```
-ping("Build completed successfully! 47 tests passed.")
-```
-
-### Get approval before continuing
-Use for destructive or important actions:
-```
-ping("Ready to deploy to production. 23 files changed. Proceed?",
-     options=["Deploy", "Cancel", "Show diff"])
-response = wait_for_response(timeout_seconds=600)
-
-if response == "Deploy":
-    // proceed with deployment
-elif response == "Show diff":
-    // show the diff, then ask again
-else:
-    // user cancelled
+ping("Build completed successfully! 47 tests passed.", wait=false)
 ```
 
 ### Notify before long task
 Let user know they can step away:
 ```
-ping("Starting full test suite (~10 minutes). I'll ping when done.")
+ping("Starting full test suite (~10 minutes). I'll ping when done.", wait=false)
 // ... run tests ...
-ping("Tests complete: 234 passed, 2 failed. Details above.")
+response = ping("Tests complete: 234 passed, 2 failed. Want details?",
+                options=["Show failures", "Continue", "Stop"])
 ```
 
 ### Multiple choice decision
 When you need user to pick between options:
 ```
-ping("Found 3 approaches to fix this bug. Which should I implement?",
-     options=["Quick fix", "Proper refactor", "Explain options"])
-response = wait_for_response()
+response = ping("Found 3 approaches to fix this bug. Which should I implement?",
+                options=["Quick fix", "Proper refactor", "Explain options"])
 ```
 
 ### Waiting for review
 After presenting something that needs human review:
 ```
 // ... generate PR description ...
-ping("PR description ready above. Want me to create the PR?",
-     options=["Create PR", "Edit first", "Cancel"])
+response = ping("PR description ready above. Want me to create the PR?",
+                options=["Create PR", "Edit first", "Cancel"])
+```
+
+### Advanced: Do work while waiting
+If you need to do something between sending and waiting:
+```
+ping("Starting deployment...", wait=false)
+// ... do some setup work ...
+response = wait_for_response(timeout_seconds=600)
+```
+
+## Queue for Instant Responses
+
+Users can pre-add responses to a queue. When you call `ping()`, if the queue has items, it returns immediately with the queued response instead of waiting.
+
+This is useful for:
+- **Automated workflows**: Pre-set "Deploy" responses for CI/CD
+- **AI tools that can't wait**: Codex, Cursor, etc. may not support long MCP waits
+
+```bash
+# User adds to queue before running AI
+strayfiles-ping queue add "Deploy"
+strayfiles-ping queue add "Yes"
+
+# AI calls ping() and gets instant response from queue
+response = ping("Ready to deploy?")  # Returns immediately: "Deploy"
 ```
 
 ## Best Practices
@@ -122,15 +163,19 @@ ping("PR description ready above. Want me to create the PR?",
    - Don't ping for each file changed
    - Batch related updates into one message
 
-5. **Set appropriate timeouts**:
-   - Quick decisions (yes/no): 5 minutes (default)
-   - Code review needed: 10 minutes
-   - If user doesn't respond, gracefully handle timeout
+5. **Handle timeouts gracefully**:
+   - If user doesn't respond, the message will guide you
+   - Consider continuing with a safe default
+   - Or leave a summary for the user to review later
 
 6. **Proactive is good**:
    - Ping before starting long tasks (builds, deploys)
    - User appreciates knowing they can step away
    - Better to over-notify than leave user waiting
+
+7. **One pending ping at a time**:
+   - Wait for response before sending another ping
+   - Multiple pings will overwrite each other
 
 ## Error Handling
 
@@ -139,10 +184,10 @@ If ping fails (auth issue, network, subscription):
 - Continue with the task if possible
 - Don't repeatedly retry failed pings
 
-If wait_for_response times out:
+If ping times out (user didn't respond):
+- The response message includes guidance
 - Treat as "no response" not as error
-- Ask user in chat what they'd like to do
-- Don't block indefinitely
+- Continue with safe defaults or leave a summary
 
 ## Requirements
 

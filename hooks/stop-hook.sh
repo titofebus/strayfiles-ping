@@ -3,8 +3,7 @@
 # Reminds Claude to send a ping notification to the user
 
 echo '{
-  "decision": "block",
-  "reason": "If the user asked to be notified when done, use the ping tool to send them a notification now.",
-  "systemMessage": "Task complete - send ping notification if requested"
+  "decision": "continue",
+  "systemMessage": "If the user asked to be notified when done, remember to send them a ping notification now."
 }'
 exit 0

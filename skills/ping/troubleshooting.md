@@ -14,7 +14,7 @@ The `strayfiles-ping` binary isn't installed or not in PATH.
 cargo install --path /path/to/strayfiles.app/backend/ping-mcp
 
 # Or download binary
-curl -fsSL https://strayfiles.com/install-ping.sh | sh
+curl -fsSL https://strayfiles.com/ping-install.sh | sh
 
 # Verify installation
 which strayfiles-ping
@@ -130,11 +130,11 @@ First response wins - this is by design.
 
 ### Response shows but Claude ignores it
 
-The `wait_for_response` might have timed out.
+The ping might have timed out before you responded.
 
 **Solution:**
 - Tell Claude: "My response was X"
-- Ask Claude to ping again with longer timeout
+- Ask Claude to ping again with longer timeout: "ping me and wait 10 minutes"
 
 ## Connection Issues
 

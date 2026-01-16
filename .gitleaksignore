@@ -1,0 +1,5 @@
+# Gitleaks ignore file for false positives
+# Format: filepath:ruleid:linenumber
+
+# Documentation examples - not real secrets (example curl commands)
+plugins/strayfiles-ping/docs/self-hosting.md:curl-auth-header:254

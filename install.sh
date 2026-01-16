@@ -1,11 +1,15 @@
 #!/bin/bash
 # Strayfiles Ping installer
-# Downloads the strayfiles-ping binary for your platform
+# Downloads and verifies the strayfiles-ping binary for your platform
 
 set -e
 
 REPO="titofebus/strayfiles-ping"
 INSTALL_DIR="${HOME}/.local/bin"
+
+# Minisign public key for signature verification
+# This key is used to verify all release binaries
+PUBLIC_KEY="RWQf6LRCGA9i5UxATuRCuQV8PuJBLAZ4r7r7qQ9f3RcqH0L4fK0NqBYk"
 
 # Detect platform
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -35,12 +39,52 @@ fi
 
 echo "Installing strayfiles-ping for ${PLATFORM}..."
 
-# Create install directory
+# Create install directory and temp dir
 mkdir -p "$INSTALL_DIR"
+TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT
 
 # Download binary
-echo "Downloading from ${DOWNLOAD_URL}..."
-curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/strayfiles-ping"
+echo "Downloading binary from ${DOWNLOAD_URL}..."
+curl -fsSL "$DOWNLOAD_URL" -o "${TEMP_DIR}/strayfiles-ping"
+
+# Download signature
+SIGNATURE_URL="${DOWNLOAD_URL}.minisig"
+echo "Downloading signature..."
+if curl -fsSL "$SIGNATURE_URL" -o "${TEMP_DIR}/strayfiles-ping.minisig" 2>/dev/null; then
+  # Verify signature if minisign is available
+  if command -v minisign >/dev/null 2>&1; then
+    echo "Verifying signature..."
+    echo "$PUBLIC_KEY" > "${TEMP_DIR}/pubkey"
+
+    if minisign -Vm "${TEMP_DIR}/strayfiles-ping" -p "${TEMP_DIR}/pubkey" 2>/dev/null; then
+      echo "✓ Signature verified"
+    else
+      echo "❌ Signature verification failed!"
+      echo "The binary may have been tampered with."
+      echo "Refusing to install for your security."
+      exit 1
+    fi
+  else
+    echo "⚠️  minisign not found - skipping signature verification"
+    echo "   Install minisign for secure verification:"
+    echo "   - macOS: brew install minisign"
+    echo "   - Linux: apt-get install minisign"
+    echo ""
+    read -p "Continue without verification? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo "Installation cancelled"
+      exit 1
+    fi
+  fi
+else
+  echo "⚠️  Signature file not found (development build?)"
+  echo "   Skipping verification..."
+fi
+
+# Install binary
+mv "${TEMP_DIR}/strayfiles-ping" "${INSTALL_DIR}/strayfiles-ping"
 chmod +x "${INSTALL_DIR}/strayfiles-ping"
 
 # Check if install dir is in PATH
