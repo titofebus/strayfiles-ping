@@ -1,2 +1,15 @@
 # Binaries are distributed via GitHub releases
 bin/
+
+# Environment variables
+.env
+
+# Swift build artifacts
+dialog/.build/
+dialog/.swiftpm/
+
+# macOS
+.DS_Store
+
+# Internal roadmap
+docs/roadmap-native-interactions.md

@@ -80,9 +80,43 @@ jobs:
             backend/ping-mcp/${{ matrix.asset_name }}
             backend/ping-mcp/${{ matrix.asset_name }}.minisig
 
+  build-dialog:
+    name: Build Dialog (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build universal binary
+        working-directory: dialog
+        run: |
+          swift build -c release --arch arm64 --arch x86_64
+          cp .build/apple/Products/Release/strayfiles-dialog strayfiles-dialog-macos-universal
+
+      - name: Install minisign
+        run: brew install minisign
+
+      - name: Sign binary
+        working-directory: dialog
+        env:
+          MINISIGN_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
+        run: |
+          echo "$MINISIGN_KEY" > private.key
+          minisign -S -s private.key -m strayfiles-dialog-macos-universal
+          rm private.key
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: strayfiles-dialog-macos-universal
+          path: |
+            dialog/strayfiles-dialog-macos-universal
+            dialog/strayfiles-dialog-macos-universal.minisig
+
   release:
     name: Create release
-    needs: build
+    needs: [build, build-dialog]
     runs-on: ubuntu-latest
 
     steps:
@@ -99,8 +133,8 @@ jobs:
           cd artifacts
           for dir in */; do
             cd "$dir"
-            for file in strayfiles-ping-*; do
-              if [[ ! "$file" =~ \.minisig$ ]]; then
+            for file in strayfiles-*; do
+              if [[ ! "$file" =~ \.(minisig|sha256)$ ]]; then
                 sha256sum "$file" > "$file.sha256"
               fi
             done
@@ -113,8 +147,8 @@ jobs:
           # Extract version from tag
           VERSION=${GITHUB_REF#refs/tags/v}
           # Extract release notes from CHANGELOG.md
-          if [ -f "plugins/strayfiles-ping/CHANGELOG.md" ]; then
-            awk "/## \[$VERSION\]/,/## \[/" plugins/strayfiles-ping/CHANGELOG.md | head -n -1 | tail -n +2 > release_notes.md
+          if [ -f "CHANGELOG.md" ]; then
+            awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | head -n -1 | tail -n +2 > release_notes.md
           else
             echo "Release $VERSION" > release_notes.md
           fi
@@ -125,5 +159,6 @@ jobs:
           body_path: release_notes.md
           files: |
             artifacts/**/strayfiles-ping-*
+            artifacts/**/strayfiles-dialog-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

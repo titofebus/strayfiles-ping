@@ -1,18 +1,24 @@
 # Strayfiles Ping
 
-Get notified on your phone when AI tasks complete. Say "ping me when done" and Claude will actually ping you.
+Get instant responses from users while they're in another app. Native macOS dialogs for quick decisions, push notifications for when they're away.
 
 ## What It Does
 
-- **Task notifications**: Get pinged when builds, tests, or deployments finish
-- **Approval requests**: Claude can ask for approval before destructive actions
-- **Cross-device**: Notifications appear on iOS, macOS, and the TUI
-- **Quick replies**: Respond with buttons or custom text right from the notification
+- **Native dialogs**: Confirmation, choice, text input, multi-question wizards — rendered as native macOS dialogs
+- **Push notifications**: Reach users on iOS, macOS, and TUI when they're away from their computer (Pro)
+- **Smart routing**: Automatically picks local dialog or remote push based on user presence (Pro)
+- **Zero config**: Works immediately after install — no account needed for local dialogs
 
-## Prerequisites
+## Free vs Pro
 
-- **Strayfiles Pro** subscription
-- **Strayfiles app** installed on at least one device (iOS, macOS, or TUI)
+| Capability | Free | Pro |
+|---|---|---|
+| Native macOS dialogs | Yes | Yes |
+| All input types (confirmation, choice, text, etc.) | Yes | Yes |
+| Snooze, feedback, history | Yes | Yes |
+| Smart routing (auto local/remote) | — | Yes |
+| Remote push notifications (iOS, macOS, TUI) | — | Yes |
+| Response queue for CI/CD automation | — | Yes |
 
 ## Installation
 
@@ -20,7 +26,9 @@ Get notified on your phone when AI tasks complete. Say "ping me when done" and C
 # Install the plugin
 claude plugin install https://github.com/titofebus/strayfiles-ping.git
 
-# Authenticate with your Strayfiles account
+# That's it! Local dialogs work immediately.
+
+# Optional: Unlock remote push (Pro)
 strayfiles-ping auth
 ```
 
@@ -33,37 +41,75 @@ Just tell Claude naturally:
 - "Let me know if the build fails"
 - "Notify me when you're finished"
 
-Claude will automatically use Ping for long-running tasks like:
-- Full test suites
-- Large refactors
-- Database migrations
-- Build and deploy pipelines
+Claude will automatically use the right dialog type:
+
+- **Confirmation**: "Deploy to production?" → Yes/No
+- **Choice**: "Which approach?" → Pick from a list
+- **Multi-select**: "Which packages to update?" → Check multiple items
+- **Text input**: "What should the commit message be?" → Free-form text
+- **Secure input**: "Enter the API key" → Masked entry (never logged)
+- **Wizard**: "Configure the new service" → Step-by-step questions
+- **Notification**: "Build completed!" → Fire-and-forget
 
 ## How It Works
 
 1. You ask Claude to do something and ping you
 2. Claude runs the task
-3. When done (or when approval is needed), a notification appears on your devices
-4. You respond from your phone, Mac, or TUI
+3. A native macOS dialog appears (or a push notification if you're away)
+4. You respond — choose an option, type text, or snooze for later
 5. Claude continues based on your response
+
+## Configuration
+
+```bash
+# Set dialog position
+strayfiles-ping config set dialog.position center
+
+# Enable dialog sounds
+strayfiles-ping config set dialog.sound subtle
+
+# Set timeout (seconds)
+strayfiles-ping config set dialog.timeout 300
+
+# View all settings
+strayfiles-ping config list
+```
+
+Config file: `~/.config/strayfiles-ping/config.toml`
+
+See [docs/config.md](docs/config.md) for the full schema.
+
+## Interaction History
+
+```bash
+# View recent interactions
+strayfiles-ping history --last 10
+
+# Search by keyword
+strayfiles-ping history --search "deploy"
+
+# Filter by project
+strayfiles-ping history --project my-app
+```
 
 ## Troubleshooting
 
-**"Notifications not appearing"**
-- Check Strayfiles settings: Ping must be enabled
-- Verify notification permissions in System Settings (Mac) or Settings app (iOS)
-- Make sure you're signed into the same Strayfiles account
+**"Dialog not appearing"**
+- Check: `which strayfiles-dialog` (binary must be installed)
+- Check: `strayfiles-ping config get dialog.enabled` (must be `true`)
 
 **"strayfiles-ping command not found"**
-- Run the install script: `./install.sh`
-- Or manually install: `cargo install --path /path/to/ping-mcp`
+- Run the install script: `curl -fsSL https://strayfiles.com/ping-install.sh | sh`
 
-**"Authentication failed"**
+**"Authentication failed"** (Pro)
 - Run `strayfiles-ping auth` again
-- Check your internet connection
 - Verify your Strayfiles Pro subscription is active
+
+See [troubleshooting guide](skills/ping/troubleshooting.md) for more.
 
 ## Links
 
-- [Documentation](https://strayfiles.com/docs/pro/ping)
+- [Architecture](docs/architecture.md)
+- [Configuration](docs/config.md)
+- [Changelog](CHANGELOG.md)
 - [Strayfiles](https://strayfiles.com)

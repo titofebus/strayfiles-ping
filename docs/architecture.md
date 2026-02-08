@@ -2,7 +2,7 @@
 
 ## Overview
 
-Strayfiles Ping is an MCP (Model Context Protocol) server that enables AI coding agents to send notifications to users and wait for responses.
+Strayfiles Ping is an MCP (Model Context Protocol) server that enables AI coding agents to show native dialogs and send push notifications to users, then wait for responses.
 
 ## Components
 
@@ -18,79 +18,163 @@ Strayfiles Ping is an MCP (Model Context Protocol) server that enables AI coding
 │  MCP Server     │  Rust binary (strayfiles-ping)
 │  (This Project) │
 └────────┬────────┘
-         │ HTTPS + WebSocket
          │
-         ▼
-┌─────────────────┐
-│  Supabase       │  Backend infrastructure
-│  ┌──────────┐   │
-│  │PostgreSQL│   │  - Notifications table
-│  │   +      │   │  - Queue table
-│  │ Realtime │   │  - User subscriptions
-│  └──────────┘   │
-│  ┌──────────┐   │
-│  │   Edge   │   │  - create-agent-notification
-│  │ Functions│   │  - cleanup-expired
-│  └──────────┘   │
-└────────┬────────┘
-         │ Push notifications
-         ▼
-┌─────────────────┐
-│  User Devices   │  iOS, macOS, Web
-│  (Strayfiles)   │  Receive pings
-└─────────────────┘
+    ┌────┴────────────────────┐
+    │                         │
+    ▼ User present            ▼ User away (Pro)
+┌─────────────────┐  ┌─────────────────┐
+│  Dialog CLI     │  │  Supabase       │
+│  (strayfiles-   │  │  ┌──────────┐   │
+│   dialog)       │  │  │PostgreSQL│   │
+│                 │  │  │   +      │   │
+│  Swift binary   │  │  │ Realtime │   │
+│  Native macOS   │  │  └──────────┘   │
+│  dialogs        │  │  ┌──────────┐   │
+└────────┬────────┘  │  │   Edge   │   │
+         │           │  │ Functions│   │
+         │ JSON      │  └──────────┘   │
+         │ stdout    └────────┬────────┘
+         │                    │ Push notifications
+         ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐
+│  Native Dialog  │  │  User Devices   │
+│  (macOS)        │  │  iOS, macOS, TUI│
+└─────────────────┘  └─────────────────┘
 ```
+
+## Two Binaries
+
+| Binary | Language | Platform | Purpose |
+|--------|----------|----------|---------|
+| `strayfiles-ping` | Rust | macOS, Linux | MCP server, routing, remote push |
+| `strayfiles-dialog` | Swift | macOS only | Native dialog renderer |
+
+Both ship together. The dialog CLI is spawned by the MCP server per dialog and communicates via JSON on stdout.
+
+## Routing Flow
+
+The MCP server decides whether to show a local dialog or send a remote push:
+
+```
+1. Are local dialogs enabled? (config: dialog.enabled)
+   ├─ No  → Is user Pro?
+   │        ├─ Yes → Remote push notification
+   │        └─ No  → Error: no way to reach user
+   └─ Yes → Is dialog CLI available?
+            ├─ No  → Is user Pro?
+            │        ├─ Yes → Remote push notification
+            │        └─ No  → Error: dialog CLI not found
+            └─ Yes → Is user active? (screen unlocked, not idle)
+                     ├─ No  → Is user Pro?
+                     │        ├─ Yes → Remote push notification
+                     │        └─ No  → Local dialog (best effort)
+                     └─ Yes → Local dialog
+```
+
+Free users always get local dialogs. Pro users get smart routing with remote fallback.
 
 ## Data Flow
 
-### 1. Sending a Ping
+### 1. Local Dialog (Free + Pro)
 
 ```
-1. Agent calls: ping("Ready to deploy?")
-2. MCP Server → Edge Function: create_notification()
-3. Edge Function:
-   - Checks for queued response
-   - If queue item exists: auto-respond
-   - Else: create pending notification
-4. Response → Agent: notification_id + status
+1. Agent calls: ping("Ready to deploy?", input_type="confirmation")
+2. MCP Server:
+   - Reads config (~/.config/strayfiles-ping/config.toml)
+   - Checks snooze state → returns snooze response if active
+   - Checks routing → decides local
+   - Spawns: strayfiles-dialog --json '{"message":"Ready to deploy?","input_type":"confirmation"}'
+3. Dialog CLI:
+   - Reads config (same file)
+   - Shows native macOS dialog
+   - User responds
+   - Writes JSON to stdout, exits
+4. MCP Server:
+   - Parses JSON response
+   - Writes to history
+   - Returns to agent
 ```
 
-### 2. Waiting for Response
-
-By default, `ping()` waits for a response automatically. The flow is:
+### 2. Remote Push (Pro)
 
 ```
 1. Agent calls: ping("Ready to deploy?")
 2. MCP Server:
-   - Creates notification
+   - Routing decides remote (user idle/locked)
+   - Creates notification via Edge Function
    - Subscribes to Realtime (WebSocket)
-   - Listens for notification updates
 3. User responds on device → Supabase
 4. Realtime pushes update → MCP Server
-5. Response → Agent: user's answer
+5. Response → Agent
 ```
-
-For advanced use cases, agents can use `wait=false` and call `wait_for_response()` separately.
 
 ### 3. Queue Auto-Response
 
 ```
-1. User pre-adds: queue add "approved"
+1. User pre-adds: strayfiles-ping queue add "approved"
 2. Agent calls: ping("Ready?")
-3. Edge Function:
-   - Finds queued response: "approved"
-   - Auto-responds immediately
-   - Marks queue item as used
-4. Response → Agent: instant "approved"
+3. MCP Server finds queued response → returns immediately
 ```
+
+## Configuration
+
+Shared config file at `~/.config/strayfiles-ping/config.toml`:
+
+```toml
+[dialog]
+enabled = true
+position = "top-right"
+timeout = 600
+sound = "none"
+always_on_top = true
+cooldown = false
+cooldown_duration = 1.0
+
+[theme]
+accent = ""
+
+[routing]
+idle_threshold = 120
+prefer = "auto"
+
+[snooze]
+until = ""
+```
+
+Both binaries read this file. Any application or the CLI can write it.
+
+See [config.md](config.md) for the full schema.
+
+## Dialog CLI Lifecycle
+
+```
+Spawn → Read config → Check snooze → Show dialog → Write JSON → Exit
+```
+
+- Process spawns fresh per dialog
+- No dock icon, no menu bar, no background presence
+- Exit code 0 = success (JSON written), exit code 1 = error
+- Singleton guard via pid file at /tmp/strayfiles-dialog.pid
+
+## History
+
+Per-day JSON files at `~/.local/share/strayfiles-ping/history/`:
+
+```
+history-2025-06-15.json
+history-2025-06-16.json
+```
+
+- Max 200 entries per day
+- Secure input values never logged
+- Snoozed auto-returns not recorded
+- Queryable via: `strayfiles-ping history [--last N] [--since DATE] [--search TEXT]`
 
 ## Key Features
 
 ### Atomic Queue Consumption
 
-**Problem:** Queue items were marked as "used" before notification creation, causing data loss on network failures.
-
-**Solution:** Single atomic SQL function:
+Single atomic SQL function for queue + notification creation:
 
 ```sql
 CREATE FUNCTION create_notification_with_queue(...)
@@ -111,28 +195,29 @@ Tokens stored in system keychain:
 - **macOS**: Keychain Access (native API)
 - **Linux**: Secret Service (D-Bus)
 
-Automatic migration from file → keychain on first use.
+### Input Types
 
-### Rate Limiting
+Seven input types for structured data collection:
 
-```
-10 auto-responses per hour
-├─ Enforced at SQL function level
-├─ Counted per user_id
-└─ Returns 429 on exceeded
-```
+| Type | Description |
+|------|-------------|
+| `notify` | Fire-and-forget notification |
+| `confirmation` | Yes/no dialog |
+| `choice` | Single-select with descriptions |
+| `multi_select` | Checkbox selection |
+| `text` | Free-form text entry |
+| `secure_text` | Masked text entry (never logged) |
+| `questions` | Multi-question wizard or accordion |
 
-### Protocol Compliance
+### Snooze & Feedback
 
-MCP 2025-11-25:
-- `protocolVersion`: "2025-11-25"
-- `isError: false` on successful tool results
-- `listChanged: false` capability
-- JSON-RPC 2.0 validation
+- **Snooze**: User defers all dialogs for 1-60 minutes. Global, persisted in config.
+- **Feedback**: User redirects the agent with free-form text instead of answering.
+- **Comment**: User attaches an optional note alongside their answer.
 
 ## Security Model
 
-### Authentication
+### Authentication (Pro)
 
 ```
 1. User: strayfiles-ping auth
@@ -147,144 +232,47 @@ MCP 2025-11-25:
 All database access protected by RLS:
 
 ```sql
--- Users can only see their own notifications
 CREATE POLICY user_notifications ON agent_notifications
   USING (auth.uid() = user_id);
 ```
 
-### Pro Tier Enforcement
-
-```
-1. Check user_subscriptions table
-2. If tier != 'pro': return NotPro error
-3. Else: allow operation
-```
-
 ## Error Handling
-
-### Error Hierarchy
 
 ```
 PingError
 ├─ NotAuthenticated (-32001)
 ├─ NotPro (-32001)
 ├─ TokenRefreshFailed (-32001)
-├─ InvalidToken (-32602)
+├─ DialogNotFound (-32002)
+├─ DialogDisabled (-32002)
 ├─ InvalidRequest (-32602)
 ├─ Timeout (-32002)
 ├─ RateLimitExceeded (-32003)
-├─ QueueLimitExceeded (-32003)
 ├─ ServiceUnavailable (-32004)
 └─ Supabase/Http/WebSocket (-32603)
 ```
 
-### Retry Strategy
-
-- Token refresh: Automatic with backoff
-- WebSocket reconnect: Exponential backoff
-- HTTP requests: No retry (fail fast)
-
 ## Performance
 
-### Latency
+| Operation | Latency |
+|-----------|---------|
+| Local dialog spawn to visible | < 50ms |
+| Remote ping creation | ~100-300ms |
+| Realtime response delivery | ~50-100ms |
 
-- Local operation: < 1ms
-- Ping creation: ~100-300ms (HTTPS + DB)
-- Realtime response: ~50-100ms (WebSocket)
-
-### Scalability
-
-- Supabase Free: 500K requests/month
-- Realtime: Unlimited concurrent connections
-- Queue size: 100 items/user
-
-## Testing
-
-### Unit Tests
-
-```rust
-#[test]
-fn test_token_expiration() { ... }
-
-#[test]
-fn test_message_validation() { ... }
-```
-
-### Integration Tests
-
-```rust
-#[tokio::test]
-async fn test_ping_with_queue() {
-    let mock_server = MockSupabase::start().await;
-    // Test full flow
-}
-```
-
-### Test Command
-
-```bash
-strayfiles-ping test "Test message"
-```
-
-## Deployment
-
-### Binary Distribution
+## Binary Distribution
 
 ```
 Platforms:
-├─ macOS (arm64, x64)
-├─ Linux (x64, arm64)
-└─ Windows (planned)
+├─ strayfiles-ping: macOS (arm64, x64), Linux (x64, arm64)
+├─ strayfiles-dialog: macOS (universal binary)
+└─ Windows: not supported
 
 Distribution:
 ├─ GitHub Releases (signed binaries)
-├─ Homebrew (planned)
-└─ Install script: curl | sh
+├─ Install script: curl | sh
+└─ Ed25519 signatures (minisign)
 ```
-
-### Edge Functions
-
-```
-Deployment:
-├─ Supabase CLI
-├─ CI/CD (GitHub Actions)
-└─ Manual dashboard upload
-```
-
-## Monitoring
-
-### Metrics
-
-- Notifications created
-- Auto-responses triggered
-- Rate limits hit
-- Errors by type
-
-### Logging
-
-```rust
-// Production (info level)
-info!("Sending ping ({} chars)", msg.len());
-
-// Debug (debug level)
-debug!("Ping content: {}", msg);
-```
-
-## Future Enhancements
-
-### Planned
-
-- Windows support
-- OAuth device flow (replace manual token paste)
-- Offline queue (store pings locally when offline)
-- Binary signature verification
-- CI/CD integration testing
-
-### Not Planned
-
-- Multi-user collaboration (see Teams feature in main app)
-- Custom notification sounds (device-level feature)
-- Third-party integrations (keep focused on Claude Code)
 
 ## References
 

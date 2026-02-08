@@ -6,9 +6,9 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 ### Prerequisites
 
-- Rust (stable channel): Install from [rustup.rs](https://rustup.rs)
+- Swift 5.9+ (Xcode 15+ on macOS): For the dialog CLI
 - Git
-- A Strayfiles account (for testing)
+- macOS 14+ (for dialog development)
 
 ### Local Development
 
@@ -18,36 +18,32 @@ Thank you for your interest in contributing! This document provides guidelines f
    cd strayfiles-ping
    ```
 
-2. Build the project:
+2. Build the dialog CLI:
    ```bash
-   cd server
-   cargo build
+   cd dialog
+   swift build
    ```
 
 3. Run tests:
    ```bash
-   cargo test
+   cd dialog
+   swift test
    ```
 
-4. Run the MCP server locally:
+4. Build a release universal binary:
    ```bash
-   cargo run
+   cd dialog
+   swift build -c release --arch arm64 --arch x86_64
    ```
 
 ## Code Style
 
-### Rust
+### Swift
 
-- **Format**: Run `cargo fmt` before committing
-- **Lint**: Run `cargo clippy --all-targets` and fix all warnings
-- **Error Handling**: No `unwrap()`, `expect()`, or `panic!()` in library code
+- **Lint**: Run `swiftlint lint --strict` before committing
+- **Error Handling**: No force unwrapping (`!`) — use `guard let`, `if let`, or `??`
 - **Documentation**: Add doc comments for public APIs
-
-### Allowed Exceptions
-
-CLI code (`main.rs`, auth command) can use:
-- `println!()` for user output (it's a CLI tool)
-- `std::fs::write()` (standalone binary without atomic write module)
+- **No animations**: Use `.animation(nil)` — no custom transitions
 
 ### Git Commit Messages
 
@@ -88,9 +84,8 @@ Fix queue transaction race condition (#42)
 ### Pull Request Checklist
 
 - [ ] Code follows project style guidelines
-- [ ] All tests pass (`cargo test`)
-- [ ] Clippy passes (`cargo clippy --all-targets`)
-- [ ] Code is formatted (`cargo fmt`)
+- [ ] All tests pass (`swift test` in `dialog/`)
+- [ ] SwiftLint passes (`swiftlint lint --strict` in `dialog/`)
 - [ ] Documentation updated (if needed)
 - [ ] CHANGELOG.md updated
 - [ ] Commit messages follow guidelines
@@ -100,21 +95,18 @@ Fix queue transaction race condition (#42)
 ### Unit Tests
 
 ```bash
-cargo test
+cd dialog
+swift test
 ```
 
-### Integration Tests
+### Manual Testing
+
+Test the dialog CLI directly:
 
 ```bash
-cargo test --test integration_tests
-```
-
-### Test Command
-
-The `strayfiles-ping test` command sends a test notification:
-
-```bash
-cargo run -- test "Test message"
+cd dialog
+swift build
+.build/debug/strayfiles-dialog --json '{"message":"Test","input_type":"confirmation"}'
 ```
 
 ## Architecture
@@ -123,30 +115,31 @@ cargo run -- test "Test message"
 
 ```
 strayfiles-ping/
-├── plugin/              # Claude Code plugin files
-│   ├── .claude-plugin/  # Plugin manifest
-│   ├── skills/          # Claude Code skills
-│   └── hooks/           # Git hooks
-├── server/              # Rust MCP server
-│   ├── src/
-│   │   ├── main.rs      # CLI entry point
-│   │   ├── mcp.rs       # MCP protocol implementation
-│   │   ├── auth.rs      # Authentication flow
-│   │   ├── keychain.rs  # Secure token storage
-│   │   ├── supabase.rs  # Supabase client
-│   │   ├── tools.rs     # MCP tools (ping, wait)
-│   │   └── error.rs     # Error types
-│   └── tests/           # Test suite
-└── docs/                # Documentation
-
+├── .claude-plugin/      # Plugin manifest
+├── dialog/              # Swift dialog CLI (macOS native)
+│   ├── Package.swift
+│   ├── Sources/StrayfilesDialog/
+│   │   ├── main.swift           # CLI entry point
+│   │   ├── App/                 # NSApplication setup
+│   │   ├── Config/              # TOML config reader
+│   │   ├── Models/              # Response, type enums
+│   │   ├── Views/               # SwiftUI dialog views
+│   │   ├── Window/              # Borderless window, positioning
+│   │   └── Utils/               # Keyboard, accessibility, sound
+│   └── Tests/
+├── skills/              # Claude Code skills
+├── hooks/               # Git hooks
+├── docs/                # Documentation
+└── install.sh           # Install script
 ```
 
 ### Key Concepts
 
 - **MCP Protocol**: JSON-RPC 2.0 based protocol for tool invocation
-- **Supabase Integration**: Uses PostgREST API + Realtime WebSockets
-- **Keychain Storage**: Platform-specific secure credential storage
-- **Queue Feature**: FIFO auto-response system
+- **Dialog CLI**: Swift binary that renders native SwiftUI dialogs on macOS
+- **Config System**: Shared TOML config at `~/.config/strayfiles-ping/config.toml`
+- **Input Types**: Seven dialog types (confirmation, choice, multi_select, text, secure_text, questions, notify)
+- **Snooze/Feedback**: Global snooze system and inline feedback for redirecting agents
 
 ## Security Guidelines
 

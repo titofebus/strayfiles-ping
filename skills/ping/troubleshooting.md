@@ -10,40 +10,13 @@ The `strayfiles-ping` binary isn't installed or not in PATH.
 
 **Solution:**
 ```bash
-# Install from source
-cargo install --path /path/to/strayfiles.app/backend/ping-mcp
-
-# Or download binary
+# Install
 curl -fsSL https://strayfiles.com/ping-install.sh | sh
 
 # Verify installation
 which strayfiles-ping
 strayfiles-ping --version
 ```
-
-### "Not authenticated"
-
-The MCP server doesn't have valid credentials.
-
-**Solution:**
-```bash
-# Run authentication flow
-strayfiles-ping auth
-
-# This opens browser to strayfiles.com/ping/auth
-# Log in with your Strayfiles account
-# Token saved to ~/.strayfiles/ping-token
-```
-
-### "Subscription required"
-
-Ping is a Pro-only feature.
-
-**Solution:**
-1. Open Strayfiles app (iOS, macOS, or TUI)
-2. Go to Settings > Account
-3. Upgrade to Pro subscription
-4. Re-authenticate: `strayfiles-ping auth`
 
 ### MCP server not in Claude Code
 
@@ -63,31 +36,125 @@ claude mcp add strayfiles-ping -- strayfiles-ping
   }
 }
 
-# Restart Claude Code
-claude --restart
+# Restart Claude Code (exit and reopen)
+# /mcp to verify the server is loaded
 ```
 
-## Notification Issues
+## Native Dialog Issues
 
-### Notifications not appearing on device
+### Dialog not appearing
 
-**Check these:**
+The `strayfiles-dialog` binary may be missing or local dialogs disabled.
 
-1. **Ping enabled in app?**
-   - iOS/macOS: Settings > Ping > Enable Ping Notifications
-   - TUI: Settings > Ping > Enable: On
+**Check:**
+```bash
+# Verify dialog binary is installed
+which strayfiles-dialog
+strayfiles-dialog --version
 
-2. **System notifications allowed?**
+# Check if local dialogs are enabled
+strayfiles-ping config get dialog.enabled
+# Should be "true"
+
+# Re-enable if disabled
+strayfiles-ping config set dialog.enabled true
+```
+
+### Dialog appears in wrong position
+
+**Solution:**
+```bash
+# Set dialog position (options: top-right, center, top-left, bottom-right)
+strayfiles-ping config set dialog.position top-right
+```
+
+### Dialog disappears too quickly
+
+The timeout may be too short.
+
+**Solution:**
+```bash
+# Set timeout in seconds (1-3600)
+strayfiles-ping config set dialog.timeout 600
+```
+
+### Dialog sound not playing
+
+Sound is silent by default.
+
+**Solution:**
+```bash
+# Enable dialog sound (options: none, subtle, pop, chime)
+strayfiles-ping config set dialog.sound subtle
+```
+
+### "Another dialog is already active"
+
+Only one dialog can be shown at a time. This error means a previous dialog is still open.
+
+**Solution:**
+- Respond to or dismiss the existing dialog
+- If the dialog is stuck: `kill $(cat /tmp/strayfiles-dialog.pid)`
+
+### Button cooldown feels too long
+
+Button cooldown prevents accidental input but may feel sluggish.
+
+**Solution:**
+```bash
+# Disable cooldown entirely
+strayfiles-ping config set dialog.cooldown false
+
+# Or adjust duration (0.1 to 3.0 seconds)
+strayfiles-ping config set dialog.cooldown_duration 0.5
+```
+
+### Snooze seems stuck
+
+If pings keep returning snooze responses after the snooze should have expired.
+
+**Check:**
+```bash
+# View current snooze state
+strayfiles-ping config get snooze.until
+
+# Clear snooze manually
+strayfiles-ping config set snooze.until ""
+```
+
+## Remote Push Issues (Pro)
+
+### "Not authenticated"
+
+The MCP server doesn't have valid credentials for remote push.
+
+**Solution:**
+```bash
+# Run authentication flow
+strayfiles-ping auth
+```
+
+### "Subscription required"
+
+Remote push notifications require a Pro subscription.
+
+**Solution:**
+1. Open Strayfiles app (iOS, macOS, or TUI)
+2. Go to Settings > Account
+3. Upgrade to Pro subscription
+4. Re-authenticate: `strayfiles-ping auth`
+
+**Note:** Local native dialogs work without a subscription.
+
+### Remote notifications not appearing on device
+
+**Check:**
+1. **System notifications allowed?**
    - iOS: Settings > Strayfiles > Notifications > Allow
    - macOS: System Settings > Notifications > Strayfiles > Allow
-
-3. **Device connected to internet?**
-   - Ping uses Supabase Realtime (WebSocket)
-   - Check network connection
-
-4. **Authenticated on device?**
-   - Must be logged into same Strayfiles account
-   - Check Settings > Account
+2. **Device connected to internet?**
+3. **Authenticated on device?** Must be logged into same account
+4. **Ping enabled in app?** Settings > Ping > Enable
 
 ### Notifications delayed
 
@@ -98,83 +165,75 @@ Realtime subscription may have dropped.
 - TUI: Press `r` to reconnect, or restart
 - Check: Settings > Ping shows "Connected" status
 
-### Notification expired before I could respond
+## Non-macOS
 
-Default timeout is 5 minutes. Notifications auto-expire.
+### "Native dialogs are only available on macOS"
+
+The dialog CLI only runs on macOS. On Linux/Windows, remote push is the only option.
 
 **Solution:**
-- Ask Claude to use longer timeout: "ping me and wait up to 10 minutes"
-- Respond sooner when you see notification
-- Check notification immediately (lock screen shows preview)
+```bash
+# Set up remote push notifications (requires Pro)
+strayfiles-ping auth
+```
 
 ## Response Issues
 
 ### Response not received by Claude
 
 **Check:**
-1. Did you respond before timeout? (default 5 min)
-2. Network connection on device?
-3. Claude still waiting? (check terminal)
+1. Did you respond before timeout?
+2. Claude still waiting? (check terminal)
 
 **If Claude moved on:**
-- Just tell Claude your answer in chat
-- "My response to the ping was: Deploy"
+- Tell Claude your answer in chat: "My response to the ping was: Deploy"
 
-### Multiple devices, wrong one responded
-
-First response wins - this is by design.
+### Notification expired before I could respond
 
 **Solution:**
-- Coordinate with other devices/users
-- Dismiss notification on devices that shouldn't respond
+- Ask Claude to use longer timeout: "ping me and wait up to 10 minutes"
+- Respond sooner when you see the dialog
 
-### Response shows but Claude ignores it
+## Configuration
 
-The ping might have timed out before you responded.
+### View all settings
 
-**Solution:**
-- Tell Claude: "My response was X"
-- Ask Claude to ping again with longer timeout: "ping me and wait 10 minutes"
+```bash
+strayfiles-ping config list
+```
 
-## Connection Issues
+### Reset to defaults
 
-### "Realtime connection failed"
+```bash
+strayfiles-ping config reset
+```
 
-WebSocket connection to Supabase dropped.
+### Config file location
 
-**What happens:**
-- App falls back to polling (every 10 seconds)
-- Notifications still work, just slightly delayed
+```
+~/.config/strayfiles-ping/config.toml
+```
 
-**To reconnect:**
-- App will auto-reconnect
-- Or: Settings > Ping > Reconnect button
-- Or: Restart app
+## History
 
-### "Polling fallback active"
+### View recent interactions
 
-Not an error - app is working around connection issues.
+```bash
+strayfiles-ping history --last 10
+```
 
-**What it means:**
-- Real-time WebSocket failed
-- App polls every 10 seconds instead
-- Notifications still delivered (slight delay)
+### Search history
 
-**To restore realtime:**
-- Check internet connection
-- Wait for auto-reconnect
-- Or manually: Settings > Ping > Reconnect
+```bash
+strayfiles-ping history --search "deploy"
+strayfiles-ping history --project my-app
+```
 
-## Common Error Messages
+### Clear history
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `auth_required` | Not logged in | `strayfiles-ping auth` |
-| `subscription_required` | No Pro subscription | Upgrade in app |
-| `token_expired` | Auth token old | `strayfiles-ping auth` |
-| `notification_expired` | Took too long to respond | Respond faster / increase timeout |
-| `network_error` | No internet | Check connection |
-| `server_error` | Supabase issue | Wait and retry |
+```bash
+strayfiles-ping history clear
+```
 
 ## Debug Mode
 
@@ -197,18 +256,19 @@ RUST_LOG=debug strayfiles-ping
 }
 ```
 
+## Common Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `dialog_not_found` | Dialog binary missing | Reinstall: `curl -fsSL https://strayfiles.com/ping-install.sh \| sh` |
+| `dialog_disabled` | Local dialogs off, no Pro | `strayfiles-ping config set dialog.enabled true` |
+| `auth_required` | Not logged in (remote) | `strayfiles-ping auth` |
+| `subscription_required` | No Pro (remote only) | Upgrade in app or enable local dialogs |
+| `token_expired` | Auth token old | `strayfiles-ping auth` |
+| `notification_expired` | Timeout reached | Respond faster or increase timeout |
+| `another_dialog_active` | Dialog already showing | Dismiss existing dialog |
+
 ## Getting Help
 
-1. **Check logs:**
-   - MCP server: stderr output in Claude Code
-   - iOS: Settings > Debug > Logs
-   - macOS: Console.app > Strayfiles
-   - TUI: `~/.strayfiles/logs/`
-
-2. **Report bug:**
-   - In app: Settings > Report Bug
-   - Include: device, OS version, error message
-
-3. **Community:**
-   - GitHub Issues: github.com/strayfiles/strayfiles.app
-   - Discord: discord.gg/strayfiles
+1. **Check logs:** MCP server stderr in Claude Code terminal
+2. **Report bug:** GitHub Issues at github.com/titofebus/strayfiles-ping
