@@ -1,6 +1,8 @@
 # Strayfiles Ping
 
-Get instant responses from users while they're in another app. Native macOS dialogs for quick decisions, push notifications for when they're away.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Open source Claude Code plugin for native user interactions. Get instant responses from users while they're in another app. Native macOS dialogs for quick decisions, push notifications for when they're away.
 
 ## What It Does
 
@@ -111,5 +113,7 @@ See [troubleshooting guide](skills/ping/troubleshooting.md) for more.
 
 - [Architecture](docs/architecture.md)
 - [Configuration](docs/config.md)
+- [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
+- [License](LICENSE) (MIT)
 - [Strayfiles](https://strayfiles.com)
