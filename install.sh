@@ -2,6 +2,7 @@
 # Strayfiles Ping installer
 # Downloads the strayfiles-ping MCP server and strayfiles-dialog native UI binary
 # Usage: curl -fsSL https://strayfiles.com/ping-install.sh | sh
+# Options: SKIP_CHECKSUM=1 to bypass verification (not recommended)
 
 set -e
 
@@ -39,16 +40,16 @@ cleanup() {
     rm -f "$f"
   done
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT INT TERM HUP
 
 # Download helper — supports curl and wget
 download() {
   _url="$1"
   _dest="$2"
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$_url" -o "$_dest"
+    curl -fsSL --connect-timeout 10 --max-time 120 "$_url" -o "$_dest"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q "$_url" -O "$_dest"
+    wget -q --timeout=120 "$_url" -O "$_dest"
   else
     echo "Error: curl or wget is required" >&2
     exit 1
@@ -57,26 +58,37 @@ download() {
 
 # Fetch checksums for verification
 CHECKSUMS=""
-if command -v curl >/dev/null 2>&1; then
-  CHECKSUMS=$(curl -fsSL "$CHECKSUMS_URL" 2>/dev/null) || true
-elif command -v wget >/dev/null 2>&1; then
-  CHECKSUMS=$(wget -qO- "$CHECKSUMS_URL" 2>/dev/null) || true
+if [ "${SKIP_CHECKSUM:-0}" != "1" ]; then
+  if command -v curl >/dev/null 2>&1; then
+    CHECKSUMS=$(curl -fsSL --connect-timeout 10 --max-time 30 "$CHECKSUMS_URL" 2>/dev/null) || true
+  elif command -v wget >/dev/null 2>&1; then
+    CHECKSUMS=$(wget -qO- --timeout=30 "$CHECKSUMS_URL" 2>/dev/null) || true
+  fi
 fi
 
 verify_checksum() {
   _file="$1"
   _binary_name="$2"
 
-  if [ -z "$CHECKSUMS" ]; then
-    echo "Warning: checksum file not available, skipping verification." >&2
+  if [ "${SKIP_CHECKSUM:-0}" = "1" ]; then
+    echo "Warning: Checksum verification skipped (SKIP_CHECKSUM=1)." >&2
     return 0
+  fi
+
+  if [ -z "$CHECKSUMS" ]; then
+    echo "Error: Could not fetch checksums for verification." >&2
+    echo "Re-run with SKIP_CHECKSUM=1 to bypass (not recommended):" >&2
+    echo "  curl -fsSL https://strayfiles.com/ping-install.sh | SKIP_CHECKSUM=1 sh" >&2
+    return 1
   fi
 
   # Exact match: grep for " binary_name" at end of line to avoid substring matches
   _expected=$(echo "$CHECKSUMS" | grep " ${_binary_name}\$" | awk '{print $1}')
   if [ -z "$_expected" ]; then
-    echo "Warning: no checksum found for $_binary_name, skipping verification." >&2
-    return 0
+    echo "Error: No checksum found for $_binary_name." >&2
+    echo "Re-run with SKIP_CHECKSUM=1 to bypass (not recommended):" >&2
+    echo "  curl -fsSL https://strayfiles.com/ping-install.sh | SKIP_CHECKSUM=1 sh" >&2
+    return 1
   fi
 
   _actual=""
@@ -85,8 +97,10 @@ verify_checksum() {
   elif command -v sha256sum >/dev/null 2>&1; then
     _actual=$(sha256sum "$_file" | awk '{print $1}')
   else
-    echo "Warning: no SHA-256 tool found, skipping checksum verification." >&2
-    return 0
+    echo "Error: No SHA-256 tool found (shasum or sha256sum required)." >&2
+    echo "Re-run with SKIP_CHECKSUM=1 to bypass (not recommended):" >&2
+    echo "  curl -fsSL https://strayfiles.com/ping-install.sh | SKIP_CHECKSUM=1 sh" >&2
+    return 1
   fi
 
   if [ "$_actual" != "$_expected" ]; then
@@ -120,13 +134,17 @@ if [ "$FILE_SIZE" -lt "$MIN_SIZE" ]; then
 fi
 
 verify_checksum "$TMP_FILE" "$PING_BINARY"
-mv "$TMP_FILE" "${INSTALL_DIR}/strayfiles-ping"
-chmod +x "${INSTALL_DIR}/strayfiles-ping"
+
+# Make executable before mv so the mv is the atomic final step
+chmod +x "$TMP_FILE"
 
 # Remove macOS quarantine attribute
 if [ "$OS" = "darwin" ]; then
-  xattr -d com.apple.quarantine "${INSTALL_DIR}/strayfiles-ping" 2>/dev/null || true
+  xattr -d com.apple.quarantine "$TMP_FILE" 2>/dev/null || true
 fi
+
+# Atomic install
+mv "$TMP_FILE" "${INSTALL_DIR}/strayfiles-ping"
 
 echo "Installed strayfiles-ping to ${INSTALL_DIR}/strayfiles-ping"
 
@@ -147,12 +165,15 @@ if [ "$OS" = "darwin" ]; then
       rm -f "$TMP_FILE"
       echo "Note: strayfiles-dialog download was too small (possible error). Skipping."
       echo "Ping will use TUI notifications instead."
-    else
-      verify_checksum "$TMP_FILE" "$DIALOG_BINARY"
+    elif verify_checksum "$TMP_FILE" "$DIALOG_BINARY" 2>/dev/null; then
+      chmod +x "$TMP_FILE"
+      xattr -d com.apple.quarantine "$TMP_FILE" 2>/dev/null || true
       mv "$TMP_FILE" "${INSTALL_DIR}/strayfiles-dialog"
-      chmod +x "${INSTALL_DIR}/strayfiles-dialog"
-      xattr -d com.apple.quarantine "${INSTALL_DIR}/strayfiles-dialog" 2>/dev/null || true
       echo "Installed strayfiles-dialog to ${INSTALL_DIR}/strayfiles-dialog"
+    else
+      rm -f "$TMP_FILE"
+      echo "Note: strayfiles-dialog checksum verification failed. Skipping."
+      echo "Ping will use TUI notifications instead."
     fi
   else
     rm -f "$TMP_FILE"
@@ -167,7 +188,7 @@ case ":${PATH}:" in
   *)
     echo ""
     echo "Add this to your shell profile (.bashrc, .zshrc, etc.):"
-    echo "  export PATH=\"\$PATH:${INSTALL_DIR}\""
+    echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo ""
     ;;
 esac
