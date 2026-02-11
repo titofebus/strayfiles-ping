@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import SwiftUI
 
 /// Free-form text input dialog with optional default value.

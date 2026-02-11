@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import AppKit
 
 /// Plays optional system sounds when dialogs appear.

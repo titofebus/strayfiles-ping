@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import SwiftUI
 
 /// Root SwiftUI view for all dialog types.

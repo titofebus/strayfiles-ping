@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import Foundation
 
 /// Parsed configuration from ~/.config/strayfiles-ping/config.toml.

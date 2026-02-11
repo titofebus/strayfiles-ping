@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import AppKit
 
 /// NSApplicationDelegate that manages the app lifecycle.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import SwiftUI
 
 /// Snooze duration picker overlay.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import SwiftUI
 
 /// Simple yes/no confirmation dialog.

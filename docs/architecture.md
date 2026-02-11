@@ -269,8 +269,8 @@ Platforms:
 └─ Windows: not supported
 
 Distribution:
-├─ GitHub Releases (signed binaries)
-├─ Install script: curl | sh
+├─ Supabase Storage (signed binaries via scripts/release.sh)
+├─ Install script: curl -fsSL https://strayfiles.com/ping-install.sh | sh
 └─ Ed25519 signatures (minisign)
 ```
 

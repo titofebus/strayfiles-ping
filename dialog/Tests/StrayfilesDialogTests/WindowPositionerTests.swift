@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import XCTest
 
 @testable import strayfiles_dialog

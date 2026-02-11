@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import SwiftUI
 
 /// Displays the project folder name above the dialog message.

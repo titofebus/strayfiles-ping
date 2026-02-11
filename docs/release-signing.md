@@ -181,13 +181,12 @@ rm strayfiles-ping.minisig
 # Should fail with: Signature file not found
 ```
 
-## GitHub Release Process
+## Release Process
 
 1. Build binaries for all platforms
 2. Sign each binary with `minisign`
-3. Upload binaries + signatures to GitHub Release
-4. Update install script URLs to new version
-5. Test install script on each platform
+3. Upload binaries + signatures via `scripts/release.sh` (Supabase Storage)
+4. Test install script on each platform: `curl -fsSL https://strayfiles.com/ping-install.sh | sh`
 
 ## Troubleshooting
 

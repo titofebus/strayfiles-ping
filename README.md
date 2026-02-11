@@ -24,13 +24,101 @@ Open source Claude Code plugin for native user interactions. Get instant respons
 
 ## Installation
 
+### Step 1: Install the binary
+
 ```bash
-# Install the plugin
+curl -fsSL https://strayfiles.com/ping-install.sh | sh
+```
+
+### Step 2: Add the MCP server to your agent
+
+#### Claude Code
+
+```bash
+claude mcp add --transport stdio strayfiles-ping -- strayfiles-ping
+```
+
+Or use the plugin for auto-configuration (includes skills and prompts):
+
+```bash
 claude plugin install https://github.com/titofebus/strayfiles-ping.git
+```
 
-# That's it! Local dialogs work immediately.
+#### Codex
 
-# Optional: Unlock remote push (Pro)
+```bash
+codex mcp add strayfiles-ping -- strayfiles-ping
+```
+
+#### Cursor
+
+Add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "strayfiles-ping": {
+      "command": "strayfiles-ping"
+    }
+  }
+}
+```
+
+#### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "strayfiles-ping": {
+      "command": "strayfiles-ping"
+    }
+  }
+}
+```
+
+#### VS Code
+
+Add to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "strayfiles-ping": {
+      "type": "stdio",
+      "command": "strayfiles-ping"
+    }
+  }
+}
+```
+
+#### Zed
+
+Add to your Zed settings (`zed: open settings`):
+
+```json
+{
+  "context_servers": {
+    "strayfiles-ping": {
+      "command": "strayfiles-ping",
+      "args": []
+    }
+  }
+}
+```
+
+#### Other MCP clients
+
+Any MCP client that supports stdio transport can use this server. The command is:
+
+```
+strayfiles-ping
+```
+
+### Step 3 (Optional): Unlock remote push (Pro)
+
+```bash
 strayfiles-ping auth
 ```
 

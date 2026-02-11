@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import SwiftUI
 
 /// Thin progress bar showing remaining time before auto-dismiss.

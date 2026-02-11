@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import AppKit
 
 /// Handles global keyboard shortcuts for dialog navigation.

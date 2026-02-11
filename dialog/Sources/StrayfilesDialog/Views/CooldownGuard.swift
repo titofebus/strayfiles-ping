@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import SwiftUI
 
 /// Blocks keyboard input during the cooldown period after a dialog appears.
