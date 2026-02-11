@@ -28,7 +28,7 @@ minisign -Vm strayfiles-ping-macos-arm64 -p keys/strayfiles-ping.pub
 
 Private key location (maintainers only):
 - Stored in 1Password vault
-- Used in GitHub Actions via secrets
+- Used during manual release signing
 - File: `strayfiles-ping.key`
 
 ## Generating New Keys

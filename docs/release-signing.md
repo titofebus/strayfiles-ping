@@ -43,17 +43,6 @@ mv strayfiles-ping-private.pem ~/.ssh/
 
 ## Signing Release Binaries
 
-### Automated (CI/CD)
-
-Add private key to GitHub Secrets:
-
-```yaml
-# .github/workflows/release.yml
-env:
-  MINISIGN_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
-  MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
-```
-
 ### Manual Signing
 
 ```bash
@@ -144,7 +133,7 @@ If the private key is compromised:
 - **DO NOT** commit private key to git
 - **DO NOT** share private key in Slack/email
 - **DO** store in 1Password/Vault with team access
-- **DO** use CI/CD secrets for automated signing
+- **DO** use `scripts/release.sh` for signing and uploading
 - **DO** require password for private key
 
 ### Public Key Distribution
