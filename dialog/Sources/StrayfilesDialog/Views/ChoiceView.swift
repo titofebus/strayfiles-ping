@@ -90,6 +90,8 @@ struct OptionRow: View {
   let isSelected: Bool
   let action: () -> Void
 
+  @Environment(\.dialogAccent) private var accent
+
   var body: some View {
     HStack {
       VStack(alignment: .leading, spacing: 2) {
@@ -107,14 +109,14 @@ struct OptionRow: View {
 
       if isSelected {
         Image(systemName: "checkmark")
-          .foregroundColor(.accentColor)
+          .foregroundColor(accent)
       }
     }
     .padding(.horizontal, 8)
     .padding(.vertical, 6)
     .background(
       RoundedRectangle(cornerRadius: 4)
-        .fill(isSelected ? Color.accentColor.opacity(0.1) : .clear)
+        .fill(isSelected ? accent.opacity(0.1) : .clear)
     )
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)

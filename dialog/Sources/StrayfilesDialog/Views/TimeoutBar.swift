@@ -10,13 +10,14 @@ struct TimeoutBar: View {
   /// The start date of the dialog.
   let startDate: Date
 
+  @Environment(\.dialogAccent) private var accent
   @State private var progress: Double = 1.0
   @State private var countdownTimer: Timer?
 
   var body: some View {
     GeometryReader { geometry in
       Rectangle()
-        .fill(Color.accentColor.opacity(0.4))
+        .fill(accent.opacity(0.4))
         .frame(
           width: geometry.size.width * progress,
           height: 2

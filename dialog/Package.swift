@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
 // swift-tools-version: 5.9
+// SPDX-License-Identifier: MIT
 
 import PackageDescription
 

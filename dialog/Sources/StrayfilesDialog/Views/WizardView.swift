@@ -12,6 +12,7 @@ struct WizardView: View {
   @State private var currentStep = 0
   @State private var answers: [String: String] = [:]
   @State private var multiSelectSets: [String: Set<String>] = [:]
+  @Environment(\.dialogAccent) private var accent
   @State private var currentText = ""
 
   var body: some View {
@@ -33,9 +34,9 @@ struct WizardView: View {
           Circle()
             .fill(
               index == currentStep
-                ? Color.accentColor
+                ? accent
                 : index < currentStep
-                  ? Color.accentColor.opacity(0.5) : Color.secondary.opacity(0.3)
+                  ? accent.opacity(0.5) : Color.secondary.opacity(0.3)
             )
             .frame(width: 6, height: 6)
         }
@@ -166,7 +167,7 @@ struct WizardView: View {
                 Spacer()
                 if answers[question.id] == option {
                   Image(systemName: "checkmark")
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(accent)
                 }
               }
               .padding(.vertical, 4)

@@ -7,10 +7,12 @@ import SwiftUI
 struct MarkdownText: View {
   let text: String
 
+  @Environment(\.dialogAccent) private var accent
+
   var body: some View {
     Text(LocalizedStringKey(text))
       .font(.body)
-      .tint(.accentColor)
+      .tint(accent)
       .textSelection(.enabled)
   }
 }

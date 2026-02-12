@@ -31,6 +31,9 @@ final class DialogCoordinator {
       configTimeout: config.dialog.timeout
     )
 
+    // Resolve accent color from Strayfiles theme or config override
+    let accent = AccentResolver.resolve(config: config.theme)
+
     // Create the SwiftUI content
     let contentView = DialogContainer(
       payload: payload,
@@ -39,6 +42,8 @@ final class DialogCoordinator {
         self?.handleResponse(response)
       }
     )
+    .environment(\.dialogAccent, accent)
+    .tint(accent)
 
     // Wrap in hosting view
     let hostingView = NSHostingView(rootView: contentView)

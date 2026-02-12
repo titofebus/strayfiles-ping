@@ -11,6 +11,7 @@ struct CooldownGuard: ViewModifier {
   /// Cooldown duration in seconds.
   let duration: Double
 
+  @Environment(\.dialogAccent) private var accent
   @State private var isCoolingDown = true
 
   func body(content: Content) -> some View {
@@ -20,7 +21,7 @@ struct CooldownGuard: ViewModifier {
         if isEnabled && isCoolingDown {
           GeometryReader { geometry in
             Rectangle()
-              .fill(Color.accentColor.opacity(0.3))
+              .fill(accent.opacity(0.3))
               .frame(height: 2)
               .frame(
                 width: geometry.size.width,

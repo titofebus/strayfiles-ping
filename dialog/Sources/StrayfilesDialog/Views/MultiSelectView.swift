@@ -95,10 +95,12 @@ struct CheckboxRow: View {
   let isFocused: Bool
   let action: () -> Void
 
+  @Environment(\.dialogAccent) private var accent
+
   var body: some View {
     HStack(spacing: 8) {
       Image(systemName: isChecked ? "checkmark.square.fill" : "square")
-        .foregroundColor(isChecked ? .accentColor : .secondary)
+        .foregroundColor(isChecked ? accent : .secondary)
 
       Text(label)
         .font(.body)
@@ -109,7 +111,7 @@ struct CheckboxRow: View {
     .padding(.vertical, 6)
     .background(
       RoundedRectangle(cornerRadius: 4)
-        .fill(isFocused ? Color.accentColor.opacity(0.1) : .clear)
+        .fill(isFocused ? accent.opacity(0.1) : .clear)
     )
     .contentShape(Rectangle())
     .onTapGesture { action() }

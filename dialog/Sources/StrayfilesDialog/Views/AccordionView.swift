@@ -63,6 +63,7 @@ struct AccordionSection: View {
   let onTap: () -> Void
   let onAnswer: (String) -> Void
 
+  @Environment(\.dialogAccent) private var accent
   @State private var textInput = ""
   @State private var selectedOptions: Set<String> = []
   @State private var didInitialize = false
@@ -109,7 +110,7 @@ struct AccordionSection: View {
     .padding(.horizontal, 8)
     .background(
       RoundedRectangle(cornerRadius: 4)
-        .fill(isExpanded ? Color.accentColor.opacity(0.05) : .clear)
+        .fill(isExpanded ? accent.opacity(0.05) : .clear)
     )
     .accessibilityElement(children: .contain)
     .accessibilityLabel(question.label)
@@ -165,7 +166,7 @@ struct AccordionSection: View {
                 Spacer()
                 if answer == option {
                   Image(systemName: "checkmark")
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(accent)
                 }
               }
               .padding(.vertical, 2)
