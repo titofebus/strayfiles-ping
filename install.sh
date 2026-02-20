@@ -1,5 +1,5 @@
 #!/bin/sh
-# Strayfiles Ping installer
+# Strayfiles Ping installer (MCP binaries only)
 # Downloads the strayfiles-ping MCP server and strayfiles-dialog native UI binary
 # Usage: curl -fsSL https://strayfiles.com/ping-install.sh | sh
 # Options: SKIP_CHECKSUM=1 to bypass verification (not recommended)
@@ -115,6 +115,22 @@ verify_checksum() {
   return 0
 }
 
+validate_cli_binary() {
+  _file="$1"
+  _expected_name="$2"
+  _version_output=$("$_file" --version 2>/dev/null | head -n 1 || true)
+  case "$_version_output" in
+    "${_expected_name} "*)
+      return 0
+      ;;
+    *)
+      echo "Error: Downloaded artifact is not a valid ${_expected_name} CLI binary." >&2
+      echo "This installer only installs MCP binaries (not the macOS app bundle or DMG)." >&2
+      return 1
+      ;;
+  esac
+}
+
 # Download and install strayfiles-ping
 PING_BINARY="strayfiles-ping-${PLATFORM}"
 PING_URL="${DOWNLOAD_URL}/${PING_BINARY}"
@@ -137,6 +153,7 @@ verify_checksum "$TMP_FILE" "$PING_BINARY"
 
 # Make executable before mv so the mv is the atomic final step
 chmod +x "$TMP_FILE"
+validate_cli_binary "$TMP_FILE" "strayfiles-ping"
 
 # Remove macOS quarantine attribute
 if [ "$OS" = "darwin" ]; then
@@ -167,9 +184,15 @@ if [ "$OS" = "darwin" ]; then
       echo "Ping will use TUI notifications instead."
     elif verify_checksum "$TMP_FILE" "$DIALOG_BINARY" 2>/dev/null; then
       chmod +x "$TMP_FILE"
-      xattr -d com.apple.quarantine "$TMP_FILE" 2>/dev/null || true
-      mv "$TMP_FILE" "${INSTALL_DIR}/strayfiles-dialog"
-      echo "Installed strayfiles-dialog to ${INSTALL_DIR}/strayfiles-dialog"
+      if validate_cli_binary "$TMP_FILE" "strayfiles-dialog"; then
+        xattr -d com.apple.quarantine "$TMP_FILE" 2>/dev/null || true
+        mv "$TMP_FILE" "${INSTALL_DIR}/strayfiles-dialog"
+        echo "Installed strayfiles-dialog to ${INSTALL_DIR}/strayfiles-dialog"
+      else
+        rm -f "$TMP_FILE"
+        echo "Note: strayfiles-dialog validation failed. Skipping."
+        echo "Ping will use TUI notifications instead."
+      fi
     else
       rm -f "$TMP_FILE"
       echo "Note: strayfiles-dialog checksum verification failed. Skipping."

@@ -30,6 +30,9 @@ Open source Claude Code plugin for native user interactions. Get instant respons
 curl -fsSL https://strayfiles.com/ping-install.sh | sh
 ```
 
+This installs only the Ping binaries needed for MCP (`strayfiles-ping` and
+optional `strayfiles-dialog` on macOS), not the full macOS app bundle/DMG.
+
 ### Step 2: Add the MCP server to your agent
 
 #### Claude Code
@@ -121,6 +124,9 @@ strayfiles-ping
 ```bash
 strayfiles-ping auth
 ```
+
+The pasted token is verified online against your real Strayfiles account
+before it is saved locally.
 
 ## Usage
 
