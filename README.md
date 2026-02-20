@@ -7,7 +7,7 @@ Open source Claude Code plugin for native user interactions. Get instant respons
 ## What It Does
 
 - **Native dialogs**: Confirmation, choice, text input, multi-question wizards — rendered as native macOS dialogs
-- **Push notifications**: Reach users on iOS, macOS, and TUI when they're away from their computer (Pro)
+- **Push notifications**: Reach users on iOS and macOS apps when they're away from their computer (Pro)
 - **Smart routing**: Automatically picks local dialog or remote push based on user presence (Pro)
 - **Zero config**: Works immediately after install — no account needed for local dialogs
 
@@ -19,8 +19,8 @@ Open source Claude Code plugin for native user interactions. Get instant respons
 | All input types (confirmation, choice, text, etc.) | Yes | Yes |
 | Snooze, feedback, history | Yes | Yes |
 | Smart routing (auto local/remote) | — | Yes |
-| Remote push notifications (iOS, macOS, TUI) | — | Yes |
-| Response queue for CI/CD automation | — | Yes |
+| Remote push notifications (iOS, macOS app) | — | Yes |
+| Local auto-response queue | Yes | Yes |
 
 ## Installation
 
@@ -152,6 +152,7 @@ Claude will automatically use the right dialog type:
 1. You ask Claude to do something and ping you
 2. Claude runs the task
 3. A native macOS dialog appears (or a push notification if you're away)
+   If `strayfiles-dialog` is unavailable, Ping uses local queue/poll mode.
 4. You respond — choose an option, type text, or snooze for later
 5. Claude continues based on your response
 

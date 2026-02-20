@@ -181,7 +181,7 @@ if [ "$OS" = "darwin" ]; then
     if [ "$DIALOG_SIZE" -lt "$MIN_SIZE" ]; then
       rm -f "$TMP_FILE"
       echo "Note: strayfiles-dialog download was too small (possible error). Skipping."
-      echo "Ping will use TUI notifications instead."
+      echo "Ping will use local queue/poll fallback instead."
     elif verify_checksum "$TMP_FILE" "$DIALOG_BINARY" 2>/dev/null; then
       chmod +x "$TMP_FILE"
       if validate_cli_binary "$TMP_FILE" "strayfiles-dialog"; then
@@ -191,16 +191,16 @@ if [ "$OS" = "darwin" ]; then
       else
         rm -f "$TMP_FILE"
         echo "Note: strayfiles-dialog validation failed. Skipping."
-        echo "Ping will use TUI notifications instead."
+        echo "Ping will use local queue/poll fallback instead."
       fi
     else
       rm -f "$TMP_FILE"
       echo "Note: strayfiles-dialog checksum verification failed. Skipping."
-      echo "Ping will use TUI notifications instead."
+      echo "Ping will use local queue/poll fallback instead."
     fi
   else
     rm -f "$TMP_FILE"
-    echo "Note: strayfiles-dialog not available yet. Ping will use TUI notifications instead."
+    echo "Note: strayfiles-dialog not available yet. Ping will use local queue/poll fallback instead."
     echo "You can re-run this script later to pick it up when available."
   fi
 fi
